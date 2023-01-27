@@ -1,0 +1,15 @@
+{
+    "name": "Kingphisher",
+    "version": "1.0",
+    "manifest_version": 3,
+    "description": "An extension to stop phishing websites",
+	"icons": {
+        "16": "icons/kingphisher_16.png",
+        "32": "icons/kingphisher_32.png",
+        "48": "icons/kingphisher_64.png",
+        "128": "icons/kingphisher_128.png"
+    },
+	"action": {
+		"default_popup": "noPhish.html"
+	}
+}

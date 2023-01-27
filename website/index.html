@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+	<!-- The base code used for this website can be found at https://github.com/google/yggdrasil-decision-forests/tree/main/yggdrasil_decision_forests/port/javascript/example -->
+    <title>Phish Checker</title>
+
+    <!-- Yggdrasil Decision Forests -->
+    <script src="ydf/inference.js"></script>
+
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+
+    <script>
+      // The model (once loaded).
+      let model = null;
+      let ydf = null;
+      let preparedString = {
+		full_url: [],
+		protocol: [],
+		domain: [],
+		path: [],
+		query: [],
+		fragment: [],
+		url_special_characters: [],
+		url_length: [],
+		num_to_char_ratio: [],
+		is_phishing: [null]
+	  };
+	  YggdrasilDecisionForests().then(function (m) {
+        ydf = m;
+
+        writeToTerminal("The library is loaded");
+        document.getElementById("btn_load_model").onclick = loadModel;
+        document.getElementById("btn_apply_model").onclick = applyModel;
+        document.getElementById("btn_unload_model").onclick = unloadModel;
+      });
+
+      function loadModel() {
+        if (ydf == null) {
+          writeToTerminal("The library is not yet loaded.");
+          return;
+        }
+
+        ydf.loadModelFromUrl("complex_gbt_model.zip").then((loadedModel) => {
+          model = loadedModel;
+
+          writeToTerminal("Model loaded");
+
+          document.getElementById("btn_load_model").disabled = true;
+          document.getElementById("btn_apply_model").disabled = false;
+          document.getElementById("btn_unload_model").disabled = false;
+        });
+      }
+
+      function applyModel() {
+        let untouchedURL = document.getElementById("checkUrl").value;
+		var numChar = 0;
+		var numSpecial = 0;
+		var numNumber = 0;
+		var i = 0;
+		var lengthOfURL = untouchedURL.length;
+		const parsedURL = new URL(untouchedURL);
+		for (var i = 0; i < lengthOfURL; i += 1){
+			if(untouchedURL >= 0 && untouchedURL <= 9){
+				numNumber = numNumber + 1;
+			}
+			else if(untouchedURL[i].match(/[a-z]/i)) {
+				numChar = numChar + 1;
+			}
+			else{
+				numSpecial = numSpecial + 1;
+			}
+		}
+		preparedString['full_url']=[untouchedURL];
+		preparedString['url_special_characters']= [numSpecial];
+		preparedString['url_length']=[lengthOfURL];
+		preparedString['num_to_char_ratio']=[(numChar/(lengthOfURL))];
+		preparedString['protocol']=[(parsedURL.protocol)];
+		preparedString['domain']=[(parsedURL.domain)];
+		preparedString['path']=[(parsedURL.pathname)];
+		preparedString['query']=[(parsedURL.search)];
+		preparedString['fragment']=[(parsedURL.fragment)];
+        console.log("Examples:", preparedString);
+
+        const startTimeMs = performance.now();
+        let predictions = model.predict(preparedString);
+        const endTimeMs = performance.now();
+		
+        writeToTerminal(
+          `Predictions computed in ${endTimeMs - startTimeMs} milliseconds`);
+		if(predictions > .65){
+			document.getElementById('terminal').value = "";
+			writeToTerminal('The website is valid | safety rating: ' + (predictions));
+		}
+		else{
+			document.getElementById('terminal').value = "";
+			writeToTerminal('The website is not safe | rating: ' + (predictions));
+		}
+        
+      }
+
+      function unloadModel() {
+        model.unload();
+        model = null;
+
+        writeToTerminal("Model unloaded");
+
+        document.getElementById("btn_load_model").disabled = false;
+        document.getElementById("btn_apply_model").disabled = true;
+        document.getElementById("btn_unload_model").disabled = true;
+      }
+
+      function writeToTerminal(text) {
+        if (typeof text == "object") {
+          text = JSON.stringify(text);
+        }
+        let terminal = document.getElementById("terminal");
+        terminal.value += text + "\n";
+        terminal.scrollTop = terminal.scrollHeight; // focus on bottom
+      }
+    </script>
+
+    <style>
+      .button_box {
+        display: flex;
+        justify-content: space-around;
+      }
+      .button_box button {
+        width: 100%;
+        margin: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="text-align:center">Are You Getting Phished!?</h1>
+
+    <p style="text-align: center">
+	  This website is based on the example given by Yggdrasil Decision Forests' guide for setting up TensorFlowJS.
+      Features used for classification are:<br> "full_url", "protocol", "domain", "path", "query", "fragment", "url_special_characters", "url_length", "num_to_char_ratio", and "is_phishing".
+    </p>
+
+    <p>
+      <label for="urlCheck">Input URL:</label><br />
+      <textarea
+        id="checkUrl"
+        name="testingURL"
+        style="border: 1px solid black; width: 100%"
+        rows="15"
+      ></textarea>
+    </p>
+
+    <div class="button_box">
+      <button id="btn_load_model" type="button">Load model</button>
+      <button id="btn_apply_model" type="button" disabled>Apply model</button>
+      <button id="btn_unload_model" type="button" disabled>Unload model</button>
+    </div>
+
+    <p>
+      <label for="terminal">Logs:</label><br />
+      <textarea
+        id="terminal"
+        name="terminal"
+        style="border: 1px solid black; font-family: monospace; width: 100%"
+        rows="30"
+      ></textarea>
+    </p>
+  </body>
+</html>
